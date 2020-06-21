@@ -20,21 +20,26 @@ class Import {
 	/**
 	 * Downloads the image from URL to media library and returns its ID. Returns WP_Error object on failure.
 	 *
-	 * @param string $url
-	 * @param string $title
-	 * @param int    $parent_id
+	 * @param string      $url
+	 * @param string      $title
+	 * @param int         $parent_id
+	 * @param string|null $file_name_overwrite
 	 *
 	 * @return int|\WP_Error
 	 * @noinspection PhpUnused
 	 */
-	public static function fromURL( string $url, string $title = '', int $parent_id = 0 ) {
+	public static function fromURL( string $url, string $title = '', int $parent_id = 0, ?string $file_name_overwrite = null ) {
 		if ( self::isEmpty( $url = Tools::sanitizeURL( $url ) ) ) {
 			return new WP_Error( 'invalid_url', self::INVALID_URL, array( 'url' => $url ) );
 		}
 		if ( self::isEmpty( $file_name = Tools::getImageFileName( $url ) ) ) {
 			return new WP_Error( 'invalid_file_name', self::INVALID_FILE_NAME, array( 'url' => $url ) );
 		}
-		// make sure all functions are loaded
+		// maybe overwrite file name
+		if ( !is_null( $file_name_overwrite ) ) {
+			$file_name = Tools::overwriteImageFileName( $file_name, $file_name_overwrite );
+		}
+		// make sure all functions are loaded before going further
 		self::makeSureFunctionsAreLoaded();
 		// try to download the image to temporary file
 		if ( is_wp_error( $tmp_file = download_url( $url, self::TIMEOUT_DELAY ) ) ) {

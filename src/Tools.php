@@ -22,6 +22,18 @@ class Tools {
 	}
 
 	/**
+	 * @param string $original_file_name
+	 * @param string $new_text
+	 *
+	 * @return string
+	 */
+	public static function overwriteImageFileName( string $original_file_name, string $new_text ): string {
+		$result = preg_replace( '/^[^.]+/', sanitize_title_with_dashes( $new_text ), $original_file_name );
+
+		return empty( $result ) ? $original_file_name : $result;
+	}
+
+	/**
 	 * @param string $url
 	 *
 	 * @return string
