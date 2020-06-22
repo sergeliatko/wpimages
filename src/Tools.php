@@ -28,7 +28,14 @@ class Tools {
 	 * @return string
 	 */
 	public static function overwriteImageFileName( string $original_file_name, string $new_text ): string {
-		$result = preg_replace( '/^[^.]+/', sanitize_title_with_dashes( $new_text ), $original_file_name );
+		$result = preg_replace(
+			'/^[^.]+/',
+			sanitize_title_with_dashes(
+			// remove file extension at the end of the file name replacement
+				( ( false === strpos( $new_text, '.' ) ) ? $new_text : pathinfo( $new_text, PATHINFO_FILENAME ) )
+			),
+			$original_file_name
+		);
 
 		return empty( $result ) ? $original_file_name : $result;
 	}
