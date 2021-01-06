@@ -11,14 +11,73 @@ namespace SergeLiatko\WPImages;
 class Tools {
 
 	/**
+	 * @param string $file_name
+	 *
+	 * @return string
+	 */
+	public static function getFileExtension( string $file_name ): string {
+		return is_null( $extension = pathinfo( $file_name, PATHINFO_EXTENSION ) ) ? '' : $extension;
+	}
+
+	/**
+	 * @param string $file_name
+	 *
+	 * @return string
+	 */
+	public static function getFileNameWithoutExtension( string $file_name ): string {
+		return is_null( $name = pathinfo( $file_name, PATHINFO_FILENAME ) ) ? '' : $name;
+	}
+
+	/**
 	 * @param string $url
 	 *
 	 * @return string
 	 */
-	public static function getImageFileName( string $url ) {
-		preg_match( '/[^\/]+\.(jpe?g|jpe|gif|png)\b/i', $url, $matches );
+	public static function getSanitizedFileName( string $url ): string {
+		return sanitize_file_name( basename( $url ) );
+	}
 
-		return empty( $matches[0] ) ? '' : sanitize_file_name( $matches[0] );
+	/**
+	 * @param string $url
+	 *
+	 * @return bool
+	 */
+	public static function hasMultipleExtensions( string $url ): bool {
+		$name = self::getSanitizedFileName( $url );
+
+		return ( false !== strpos( $name, '.' ) );
+	}
+
+	/**
+	 * @param string $file
+	 *
+	 * @return string|null
+	 */
+	public static function getImageRealExtension( string $file ): ?string {
+		$mime = wp_get_image_mime( $file );
+		if ( empty( $mime ) || ( 0 !== strpos( $mime, 'image/' ) ) ) {
+			return null;
+		}
+		/**
+		 * Filters the list mapping image mime types to their respective extensions.
+		 *
+		 * @param array $mime_to_ext Array of image mime types and their matching extensions.
+		 *
+		 * @since 3.0.0
+		 *
+		 */
+		$mime_to_ext = apply_filters(
+			'getimagesize_mimes_to_exts',
+			array(
+				'image/jpeg' => 'jpg',
+				'image/png'  => 'png',
+				'image/gif'  => 'gif',
+				'image/bmp'  => 'bmp',
+				'image/tiff' => 'tif',
+			)
+		);
+
+		return empty( $mime_to_ext[ $mime ] ) ? null : $mime_to_ext[ $mime ];
 	}
 
 	/**
