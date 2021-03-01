@@ -26,34 +26,113 @@ class Import {
 	 * @param string      $title
 	 * @param int         $parent_id
 	 * @param string|null $file_name_overwrite
+	 * @param string      $log_file
 	 *
 	 * @return int|\WP_Error
 	 * @noinspection PhpUnused
 	 */
-	public static function fromURL( string $url, string $title = '', int $parent_id = 0, ?string $file_name_overwrite = null ) {
+	public static function fromURL(
+		string $url,
+		string $title = '',
+		int $parent_id = 0,
+		?string $file_name_overwrite = null,
+		string $log_file = ''
+	) {
 		// make sure all functions are loaded before going further
 		self::makeSureFunctionsAreLoaded();
 		//sanitize url
-		if ( self::isEmpty( $url = Tools::sanitizeURL( $url ) ) ) {
-			return new WP_Error( 'invalid_url', self::INVALID_URL, array( 'url' => $url ) );
+		if ( self::isEmpty( $sanitized_url = Tools::sanitizeURL( $url ) ) ) {
+			return self::maybeLogError(
+				new WP_Error(
+					'invalid_url',
+					self::INVALID_URL,
+					array(
+						'url'                 => $url,
+						'title'               => $title,
+						'parent_id'           => $parent_id,
+						'file_name_overwrite' => $file_name_overwrite,
+						'sanitized_url'       => $sanitized_url,
+					)
+				),
+				$log_file
+			);
 		}
 		//check for multiple extensions
-		if ( Tools::hasMultipleExtensions( $url ) ) {
-			return new WP_Error( 'has_multiple_extensions', self::HAS_MULTIPLE_EXTENSIONS, array( 'url' => $url ) );
+		if ( Tools::hasMultipleExtensions( $sanitized_url ) ) {
+			return self::maybeLogError(
+				new WP_Error(
+					'has_multiple_extensions',
+					self::HAS_MULTIPLE_EXTENSIONS,
+					array(
+						'url'                 => $url,
+						'title'               => $title,
+						'parent_id'           => $parent_id,
+						'file_name_overwrite' => $file_name_overwrite,
+						'sanitized_url'       => $sanitized_url,
+					)
+				),
+				$log_file
+			);
 		}
 		//sanitize file name
-		if ( self::isEmpty( $file_name = Tools::getSanitizedFileName( $url ) ) ) {
-			return new WP_Error( 'invalid_file_name', self::INVALID_FILE_NAME, array( 'url' => $url ) );
+		if ( self::isEmpty( $file_name = Tools::getSanitizedFileName( $sanitized_url ) ) ) {
+			return self::maybeLogError(
+				new WP_Error(
+					'invalid_file_name',
+					self::INVALID_FILE_NAME,
+					array(
+						'url'                 => $url,
+						'title'               => $title,
+						'parent_id'           => $parent_id,
+						'file_name_overwrite' => $file_name_overwrite,
+						'sanitized_url'       => $sanitized_url,
+						'file_name'           => $file_name,
+					)
+				),
+				$log_file
+			);
 		}
 		// try to download the image to temporary file
-		if ( is_wp_error( $tmp_file = download_url( $url, self::TIMEOUT_DELAY ) ) ) {
+		if ( is_wp_error( $tmp_file = download_url( $sanitized_url, self::TIMEOUT_DELAY ) ) ) {
+			$tmp_file->add(
+				'failed_to_download_file',
+				'Failed to download file',
+				array(
+					'url'                 => $url,
+					'title'               => $title,
+					'parent_id'           => $parent_id,
+					'file_name_overwrite' => $file_name_overwrite,
+					'sanitized_url'       => $sanitized_url,
+					'file_name'           => $file_name,
+				)
+			);
+
 			/** @var \WP_Error $tmp_file */
-			return $tmp_file;
+			return self::maybeLogError(
+				$tmp_file,
+				$log_file
+			);
 		}
 		//if file extension is empty try to get it from temp file
 		if ( self::isEmpty( Tools::getFileExtension( $file_name ) ) ) {
 			if ( self::isEmpty( $extension = Tools::getImageRealExtension( $tmp_file ) ) ) {
-				return new WP_Error( 'invalid_file_name', self::INVALID_FILE_NAME, array( 'url' => $url ) );
+				return self::maybeLogError(
+					new WP_Error(
+						'invalid_file_name',
+						self::INVALID_FILE_NAME,
+						array(
+							'url'                 => $url,
+							'title'               => $title,
+							'parent_id'           => $parent_id,
+							'file_name_overwrite' => $file_name_overwrite,
+							'sanitized_url'       => $sanitized_url,
+							'file_name'           => $file_name,
+							'tmp_file'            => $tmp_file,
+							'extension'           => $extension,
+						)
+					),
+					$log_file
+				);
 			}
 			//add real extension to the file name
 			$file_name = implode( '.', array( $file_name, $extension ) );
@@ -85,6 +164,27 @@ class Import {
 		// delete the temporary file
 		@unlink( $tmp_file );
 
+		if ( is_wp_error( $id ) ) {
+			$id->add(
+				'failed_to_upload_to_library',
+				'Failed to upload to media library',
+				array(
+					'url'                 => $url,
+					'title'               => $title,
+					'parent_id'           => $parent_id,
+					'file_name_overwrite' => $file_name_overwrite,
+					'sanitized_url'       => $sanitized_url,
+					'file_name'           => $file_name,
+					'tmp_file'            => $tmp_file,
+				)
+			);
+
+			return self::maybeLogError(
+				$id,
+				$log_file
+			);
+		}
+
 		/** @var int|\WP_Error $id */
 		return $id;
 	}
@@ -102,6 +202,41 @@ class Import {
 		if ( !function_exists( 'wp_read_image_metadata' ) ) {
 			require_once( ABSPATH . 'wp-admin/includes/image.php' );
 		}
+	}
+
+	/**
+	 * @param \WP_Error $error
+	 * @param string    $log_file
+	 *
+	 * @return \WP_Error
+	 */
+	protected static function log( WP_Error $error, string $log_file ): WP_Error {
+		foreach ( $error->get_error_codes() as $error_code ) {
+			/** @noinspection PhpComposerExtensionStubsInspection */
+			error_log(
+				sprintf(
+					'%1$s :: %2$s :: %3$s :: %4$s' . "\n\r",
+					current_time( 'mysql', true ),
+					$error_code,
+					$error->get_error_message( $error_code ),
+					json_encode( $error->get_all_error_data( $error_code ) )
+				),
+				3,
+				$log_file
+			);
+		}
+
+		return $error;
+	}
+
+	/**
+	 * @param \WP_Error $error
+	 * @param string    $log_file
+	 *
+	 * @return \WP_Error
+	 */
+	protected static function maybeLogError( WP_Error $error, string $log_file = '' ): WP_Error {
+		return empty( $log_file ) ? $error : self::log( $error, $log_file );
 	}
 
 }
