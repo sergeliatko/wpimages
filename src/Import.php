@@ -215,7 +215,7 @@ class Import {
 			/** @noinspection PhpComposerExtensionStubsInspection */
 			error_log(
 				sprintf(
-					'%1$s :: %2$s :: %3$s :: %4$s' . "\n\r",
+					'%1$s :: %2$s :: %3$s :: %4$s' . "\n",
 					current_time( 'mysql', true ),
 					$error_code,
 					$error->get_error_message( $error_code ),
