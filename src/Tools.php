@@ -43,7 +43,7 @@ class Tools {
 	 * @return bool
 	 */
 	public static function hasMultipleExtensions( string $url ): bool {
-		$name = self::getSanitizedFileName( $url );
+		$name = self::getFileNameWithoutExtension( self::getSanitizedFileName( $url ) );
 
 		return ( false !== strpos( $name, '.' ) );
 	}
