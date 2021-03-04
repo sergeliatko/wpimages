@@ -14,7 +14,7 @@ class Import {
 
 	use IsEmptyTrait;
 
-	public const TIMEOUT_DELAY           = 30;
+	public const TIMEOUT_DELAY           = 120;
 	public const INVALID_URL             = 'Invalid URL';
 	public const INVALID_FILE_NAME       = 'Invalid file name';
 	public const HAS_MULTIPLE_EXTENSIONS = 'File has multiple extensions';
