@@ -213,17 +213,17 @@ class Import {
 	protected static function log( WP_Error $error, string $log_file ): WP_Error {
 		foreach ( $error->get_error_codes() as $error_code ) {
 			/** @noinspection PhpComposerExtensionStubsInspection */
-			error_log(
-				sprintf(
-					'%1$s :: %2$s :: %3$s :: %4$s' . "\n",
+			$message = "\n" . sprintf(
+					'%1$s :: %2$s :: %3$s :: %4$s',
 					current_time( 'mysql', true ),
 					$error_code,
 					$error->get_error_message( $error_code ),
 					json_encode( $error->get_all_error_data( $error_code ) )
-				),
-				3,
-				$log_file
-			);
+				);
+
+			$open = fopen( $log_file, 'a' );
+			fputs( $open, $message );
+			fclose( $open );
 		}
 
 		return $error;
@@ -235,7 +235,7 @@ class Import {
 	 *
 	 * @return \WP_Error
 	 */
-	protected static function maybeLogError( WP_Error $error, string $log_file = '' ): WP_Error {
+	public static function maybeLogError( WP_Error $error, string $log_file = '' ): WP_Error {
 		return empty( $log_file ) ? $error : self::log( $error, $log_file );
 	}
 
