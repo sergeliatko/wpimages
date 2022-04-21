@@ -14,7 +14,7 @@ class Import {
 
 	use IsEmptyTrait;
 
-	public const TIMEOUT_DELAY           = 120;
+	public const TIMEOUT_DELAY           = 60;
 	public const INVALID_URL             = 'Invalid URL';
 	public const INVALID_FILE_NAME       = 'Invalid file name';
 	public const HAS_MULTIPLE_EXTENSIONS = 'File has multiple extensions';
@@ -32,11 +32,11 @@ class Import {
 	 * @noinspection PhpUnused
 	 */
 	public static function fromURL(
-		string $url,
-		string $title = '',
-		int $parent_id = 0,
+		string  $url,
+		string  $title = '',
+		int     $parent_id = 0,
 		?string $file_name_overwrite = null,
-		string $log_file = ''
+		string  $log_file = ''
 	) {
 		// make sure all functions are loaded before going further
 		self::makeSureFunctionsAreLoaded();
@@ -210,23 +210,59 @@ class Import {
 	 *
 	 * @return \WP_Error
 	 */
-	protected static function log( WP_Error $error, string $log_file ): WP_Error {
+	protected static function log( WP_Error $error, string $log_file = '' ): WP_Error {
+		// trim file name
+		$log_file = trim( $log_file );
+		// if file name is empty add error and return
+		if ( empty( $log_file ) ) {
+			$log_file = self::get_default_log_file();
+		}
+		$message = '';
+		$time    = current_time( 'mysql', true );
 		foreach ( $error->get_error_codes() as $error_code ) {
+			$data = $error->get_error_data( $error_code );
 			/** @noinspection PhpComposerExtensionStubsInspection */
-			$message = "\n" . sprintf(
-					'%1$s :: %2$s :: %3$s :: %4$s',
-					current_time( 'mysql', true ),
-					$error_code,
-					$error->get_error_message( $error_code ),
-					json_encode( $error->get_all_error_data( $error_code ) )
+			$data_string = empty( $data ) ? '' : strval( json_encode( $data ) );
+			$message     .= "\r\n" . join(
+					"\r\n",
+					array_filter( array(
+						sprintf(
+							'[%1$s UTC] %2$s %3$s',
+							$time,
+							$error_code,
+							$error->get_error_message( $error_code )
+						),
+						$data_string,
+					) )
 				);
-
-			$open = fopen( $log_file, 'a' );
-			fputs( $open, $message );
-			fclose( $open );
+		}
+		// log error
+		if ( false === error_log( $message, 3, $log_file ) ) {
+			$error->add(
+				'failed_to_log_error',
+				'Failed to log error',
+				array(
+					'log_file' => $log_file,
+					'message'  => $message,
+				)
+			);
 		}
 
 		return $error;
+	}
+
+	/**
+	 * @return string
+	 */
+	protected static function get_default_log_file(): string {
+		$location = defined( 'WP_DEBUG_LOG' ) ?
+			strtolower( (string) WP_DEBUG_LOG )
+			: WP_CONTENT_DIR . '/debug.log';
+		if ( empty( $location ) || !file_exists( $location ) ) {
+			$location = WP_CONTENT_DIR . '/debug.log';
+		}
+
+		return trim( $location );
 	}
 
 	/**
