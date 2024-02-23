@@ -221,7 +221,6 @@ class Import {
 		$time    = current_time( 'mysql', true );
 		foreach ( $error->get_error_codes() as $error_code ) {
 			$data = $error->get_error_data( $error_code );
-			/** @noinspection PhpComposerExtensionStubsInspection */
 			$data_string = empty( $data ) ? '' : strval( json_encode( $data ) );
 			$message     .= "\r\n" . join(
 					"\r\n",
