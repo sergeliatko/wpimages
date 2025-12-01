@@ -45,7 +45,7 @@ class Tools {
 	public static function hasMultipleExtensions( string $url ): bool {
 		$name = self::getFileNameWithoutExtension( self::getSanitizedFileName( $url ) );
 
-		return ( false !== strpos( $name, '.' ) );
+		return str_contains( $name, '.' );
 	}
 
 	/**
@@ -55,7 +55,7 @@ class Tools {
 	 */
 	public static function getImageRealExtension( string $file ): ?string {
 		$mime = wp_get_image_mime( $file );
-		if ( empty( $mime ) || ( 0 !== strpos( $mime, 'image/' ) ) ) {
+		if ( empty( $mime ) || ! str_starts_with( $mime, 'image/' ) ) {
 			return null;
 		}
 		/**
@@ -68,13 +68,13 @@ class Tools {
 		 */
 		$mime_to_ext = apply_filters(
 			'getimagesize_mimes_to_exts',
-			array(
+			[
 				'image/jpeg' => 'jpg',
 				'image/png'  => 'png',
 				'image/gif'  => 'gif',
 				'image/bmp'  => 'bmp',
 				'image/tiff' => 'tif',
-			)
+			]
 		);
 
 		return empty( $mime_to_ext[ $mime ] ) ? null : $mime_to_ext[ $mime ];
@@ -91,7 +91,7 @@ class Tools {
 			'/^[^.]+/',
 			sanitize_title_with_dashes(
 			// remove file extension at the end of the file name replacement
-				( ( false === strpos( $new_text, '.' ) ) ? $new_text : pathinfo( $new_text, PATHINFO_FILENAME ) )
+				str_contains( $new_text, '.' ) ? pathinfo( $new_text, PATHINFO_FILENAME ) : $new_text
 			),
 			$original_file_name
 		);
@@ -112,7 +112,7 @@ class Tools {
 	 * @return string[]
 	 */
 	public static function getAcceptedProtocols(): array {
-		return array( 'http', 'https' );
+		return [ 'http', 'https' ];
 	}
 
 }
